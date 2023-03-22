@@ -19,6 +19,9 @@
 #include "ap_fixed.h"
 #include <string.h>
 
+// Include necessary header files for AES encryption and decryption
+#include <openssl/aes.h>
+
 #define BLOCK_SIZE 16
 
 typedef struct
@@ -39,7 +42,7 @@ typedef struct
 
 typedef struct
 {
-    block_t *ciphertext;
+    block_t ciphertext; // Change this line: use block_t instead of block_t*
 } output_t;
 
 // Encrypts the given plaintext using AES-128 encryption algorithm with the given key.
@@ -82,33 +85,27 @@ uint8_t unpad(block_t *padded_plaintext)
 
 void software(hls::stream<input_t> &input, hls::stream<output_t> &output, uint32_t num_iterations)
 {
-	// Read input
-	input_t in = input.read();
+    // Read input
+    input_t in = input.read();
 
-	// Pad the plaintext
-	uint8_t padding_size = BLOCK_SIZE - (strlen((const char *)in.plaintext->data) % BLOCK_SIZE);
-	pad(in.plaintext, padding_size);
+    // Pad the plaintext
+    uint8_t padding_size = BLOCK_SIZE - (strlen((const char *)in.plaintext->data) % BLOCK_SIZE);
+    pad(in.plaintext, padding_size);
 
-	// Encrypt the plaintext
-	encrypt(in.plaintext, in.key, in.ciphertext);
+    // Encrypt the plaintext
+    encrypt(in.plaintext, in.key, &in.ciphertext);
 
-	// Decrypt the ciphertext
-	block_t decrypted_plaintext;
-	decrypt(in.ciphertext, in.key, &decrypted_plaintext);
+    // Decrypt the ciphertext
+    block_t decrypted_plaintext;
+    decrypt(&in.ciphertext, in.key, &decrypted_plaintext);
 
-	// Remove the padding from the plaintext
-	uint8_t unpadded_size = unpad(&decrypted_plaintext);
+    // Remove the padding from the plaintext
+    uint8_t unpadded_size = unpad(&decrypted_plaintext);
 
-	// Write output
-	output_t out;
-	memcpy(out.ciphertext->data, in.ciphertext->data, BLOCK_SIZE);
-	memcpy(out.ciphertext->data + BLOCK_SIZE, &unpadded_size, 1);
-	memcpy(out.ciphertext->data + BLOCK_SIZE + 1, decrypted_plaintext.data, unpadded_size);
-	output.write(out);
+    // Write output
+    output_t out;
+    memcpy(out.ciphertext.data, in.ciphertext.data, BLOCK_SIZE); // Fix usage of 'ciphertext' in the 'output_t' struct
+    memcpy(out.ciphertext.data + BLOCK_SIZE, &unpadded_size, 1);
+    memcpy(out.ciphertext.data + BLOCK_SIZE + 1, decrypted_plaintext.data, unpadded_size);
+    output.write(out);
 }
-
-//ERROR: [HLS 207-3801] unknown type name 'AES_KEY' (EECE4632_Github_Project/Hardware/vitis.cpp:49:5)
-//ERROR: [HLS 207-3801] unknown type name 'AES_KEY' (EECE4632_Github_Project/Hardware/vitis.cpp:60:5)
-//ERROR: [HLS 207-2972] no member named 'ciphertext' in 'input_t' (EECE4632_Github_Project/Hardware/vitis.cpp:93:35)
-//ERROR: [HLS 207-2972] no member named 'ciphertext' in 'input_t' (EECE4632_Github_Project/Hardware/vitis.cpp:97:13)
-//ERROR: [HLS 207-2972] no member named 'ciphertext' in 'input_t' (EECE4632_Github_Project/Hardware/vitis.cpp:104:34)
