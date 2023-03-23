@@ -6,16 +6,8 @@ from Crypto.Cipher import AES
 import time
 import os
 
-# Define the encryption and decryption functions
+# Encrypts the given plaintext using AES-128 encryption algorithm with the given key.
 def encrypt(key, plaintext):
-    
-    # Encrypts the given plaintext using AES-128 encryption algorithm with the given key.
-    ## Args:
-    # key: The encryption key to use.
-    # plaintext: The plaintext to encrypt.
-    ## Returns:
-    # The encrypted ciphertext.
-    
     # Create an instance of the AES cipher with the given key
     cipher = AES.new(key, AES.MODE_ECB)
 
@@ -28,15 +20,8 @@ def encrypt(key, plaintext):
     # Return the ciphertext
     return ciphertext
 
+# Decrypts the given ciphertext using AES-128 decryption algorithm with the given key.
 def decrypt(key, ciphertext):
-
-    # Decrypts the given ciphertext using AES-128 decryption algorithm with the given key.
-    ## Args:
-    # key: The decryption key to use.
-    # ciphertext: The ciphertext to decrypt.
-    ## Returns:
-    # The decrypted plaintext.
-    
     # Create an instance of the AES cipher with the given key
     cipher = AES.new(key, AES.MODE_ECB)
 
@@ -49,28 +34,13 @@ def decrypt(key, ciphertext):
     # Return the plaintext
     return plaintext
 
-# Define padding and unpadding functions
+ # Pads the given plaintext to the nearest multiple of 16 bytes using the null character.
 def pad(plaintext):
-
-    # Pads the given plaintext to the nearest multiple of 16 bytes using the null character.
-
-    ## Args:
-    # plaintext: The plaintext to pad.
-
-    ## Returns:
-    # The padded plaintext.
-
     # Pad the plaintext to the nearest multiple of 16 bytes
     return plaintext + b"\0" * (16 - len(plaintext) % 16)
 
+# Removes the padding from the given padded plaintext.
 def unpad(padded_plaintext):
-    
-    # Removes the padding from the given padded plaintext.
-    ## Args:
-    # padded_plaintext: The padded plaintext to unpad.
-    ## Returns:
-    # The unpadded plaintext.
-    
     # Remove the padding from the plaintext
     return padded_plaintext.rstrip(b"\0")
 

@@ -17,10 +17,11 @@
 #include "ap_int.h"
 #include "hls_stream.h"
 #include "ap_fixed.h"
+#include <cstdint>
 #include <string.h>
 
-// Include necessary header files for AES encryption and decryption
-#include <openssl/aes.h>
+#include "encrypt.cpp"
+#include "decrypt.cpp"
 
 #define BLOCK_SIZE 16
 
@@ -45,28 +46,6 @@ typedef struct
     block_t ciphertext; // Change this line: use block_t instead of block_t*
 } output_t;
 
-// Encrypts the given plaintext using AES-128 encryption algorithm with the given key.
-void encrypt(block_t *plaintext, key_t *key, block_t *ciphertext)
-{
-    // Create an instance of the AES cipher with the given key
-    AES_KEY aes_key;
-    AES_set_encrypt_key((const unsigned char *)key->data, 128, &aes_key);
-
-    // Encrypt the plaintext
-    AES_encrypt((const unsigned char *)plaintext->data, (unsigned char *)ciphertext->data, &aes_key);
-}
-
-// Decrypts the given ciphertext using AES-128 decryption algorithm with the given key.
-void decrypt(block_t *ciphertext, key_t *key, block_t *plaintext)
-{
-    // Create an instance of the AES cipher with the given key
-    AES_KEY aes_key;
-    AES_set_decrypt_key((const unsigned char *)key->data, 128, &aes_key);
-
-    // Decrypt the ciphertext
-    AES_decrypt((const unsigned char *)ciphertext->data, (unsigned char *)plaintext->data, &aes_key);
-}
-
 // Pads the given plaintext to the nearest multiple of 16 bytes using the null character.
 void pad(block_t *plaintext, uint8_t padding_size)
 {
@@ -83,7 +62,7 @@ uint8_t unpad(block_t *padded_plaintext)
     return padding_size;
 }
 
-void software(hls::stream<input_t> &input, hls::stream<output_t> &output, uint32_t num_iterations)
+void main(hls::stream<input_t> &input, hls::stream<output_t> &output, uint32_t num_iterations)
 {
     // Read input
     input_t in = input.read();
@@ -104,7 +83,7 @@ void software(hls::stream<input_t> &input, hls::stream<output_t> &output, uint32
 
     // Write output
     output_t out;
-    memcpy(out.ciphertext.data, in.ciphertext.data, BLOCK_SIZE); // Fix usage of 'ciphertext' in the 'output_t' struct
+    memcpy(out.ciphertext.data, in.ciphertext.data, BLOCK_SIZE);
     memcpy(out.ciphertext.data + BLOCK_SIZE, &unpadded_size, 1);
     memcpy(out.ciphertext.data + BLOCK_SIZE + 1, decrypted_plaintext.data, unpadded_size);
     output.write(out);
