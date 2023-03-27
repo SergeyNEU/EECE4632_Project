@@ -1,3 +1,25 @@
+#include "ap_axi_sdata.h"
+#include "hls_stream.h"
+#include "ap_fixed.h"
+#include "ap_int.h"
+#include "ap_shift_reg.h"
+#include "ap_utils.h"
+#include "ap_common.h"
+#include "ap_int.h"
+#include "ap_fixed_base.h"
+#include "ap_int_base.h"
+#include "ap_shift_reg.h"
+#include "ap_utils.h"
+#include "hls_math.h"
+#include "hls_half.h"
+#include "hls_fpo.h"
+#include "ap_axi_sdata.h"
+#include "ap_int.h"
+#include "hls_stream.h"
+#include "ap_fixed.h"
+#include <cstdint>
+#include <string.h>
+
 #define BLOCK_SIZE 16
 
 typedef struct
@@ -14,6 +36,7 @@ typedef struct
 {
     block_t *plaintext;
     key_t *key;
+    block_t ciphertext;
 } input_t;
 
 typedef struct
@@ -264,31 +287,6 @@ void shift_rows(uint8_t state[4][4])
     }
 }
 
-//uint8_t galois_mult(uint8_t a, uint8_t b)
-//{
-//    uint8_t p = 0;
-//    uint8_t high_bit_mask = 0x80;
-//    uint8_t high_bit = 0;
-//    uint8_t modulo = 0x1B;
-//
-//    for (int i = 0; i < 8; ++i)
-//    {
-//        if (b & 1)
-//        {
-//            p ^= a;
-//        }
-//
-//        high_bit = a & high_bit_mask;
-//        a <<= 1;
-//        if (high_bit)
-//        {
-//            a ^= modulo;
-//        }
-//        b >>= 1;
-//    }
-//    return p;
-//}
-
 void mix_columns(uint8_t state[4][4])
 {
     uint8_t temp_state[4][4];
@@ -346,5 +344,11 @@ void aes_128_encrypt(const uint8_t plaintext[4 * 4], const uint8_t key[4 * 4], u
 void encrypt(block_t *plaintext, key_t *key, block_t *ciphertext)
 {
     aes_128_encrypt(plaintext->data, key->data, ciphertext->data);
+}
+
+// Decrypts the given plaintext using AES-128 encryption algorithm with the given key.
+void decrypt(block_t *plaintext, key_t *key, block_t *ciphertext)
+{
+    aes_128_decrypt(plaintext->data, key->data, ciphertext->data);
 }
 
