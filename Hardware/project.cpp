@@ -27,9 +27,7 @@ void project(hls::stream<input_t> &INPUT, hls::stream<output_t> &OUTPUT)
 
 		// Write OUTPUT
 		output_t out;
-		memcpy(out.ciphertext.data, in.ciphertext.data, BLOCK_SIZE);
-		memcpy(out.ciphertext.data + BLOCK_SIZE, &unpadded_size, 1);
-		memcpy(out.ciphertext.data + BLOCK_SIZE + 1, decrypted_plaintext.data, unpadded_size);
+		memcpy(out.decryptedtext.data, decrypted_plaintext.data, unpadded_size);
 		OUTPUT.write(out);
 	}
 }
