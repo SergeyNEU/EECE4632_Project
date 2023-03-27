@@ -20,47 +20,7 @@
 #include <cstdint>
 #include <string.h>
 
-#include "encrypt.cpp"
-#include "decrypt.cpp"
-
-#define BLOCK_SIZE 16
-
-typedef struct
-{
-    uint8_t data[BLOCK_SIZE];
-} block_t;
-
-typedef struct
-{
-    uint8_t data[BLOCK_SIZE];
-} key_t;
-
-typedef struct
-{
-    block_t *plaintext;
-    key_t *key;
-} input_t;
-
-typedef struct
-{
-    block_t ciphertext; // Change this line: use block_t instead of block_t*
-} output_t;
-
-// Pads the given plaintext to the nearest multiple of 16 bytes using the null character.
-void pad(block_t *plaintext, uint8_t padding_size)
-{
-    // Pad the plaintext to the nearest multiple of 16 bytes
-    memset(plaintext->data + BLOCK_SIZE - padding_size, padding_size, padding_size);
-}
-
-// Removes the padding from the given padded plaintext.
-uint8_t unpad(block_t *padded_plaintext)
-{
-    // Remove the padding from the plaintext
-    uint8_t padding_size = padded_plaintext->data[BLOCK_SIZE - 1];
-    memset(padded_plaintext->data + BLOCK_SIZE - padding_size, 0, padding_size);
-    return padding_size;
-}
+#include "common.cpp"
 
 void main(hls::stream<input_t> &input, hls::stream<output_t> &output, uint32_t num_iterations)
 {
