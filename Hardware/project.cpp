@@ -1,7 +1,16 @@
-#include "ap_axi_sdata.h"
-#include "hls_stream.h"
-#include "ap_fixed.h"
-#include "ap_int.h"
+#ifdef _WIN32
+    #include "ap_axi_sdata.h"
+    #include "hls_stream.h"
+    #include "ap_fixed.h"
+    #include "ap_int.h"
+#else
+    #include <iostream>
+    #include <cstdlib>
+    #include <ctime>
+    #include <iomanip>
+    #include <sstream>
+#endif
+
 #include <cstdint>
 #include <string.h>
 
@@ -15,12 +24,12 @@ typedef struct
 typedef struct
 {
     uint8_t data[BLOCK_SIZE];
-} key_t;
+} key_t_sergey;
 
 typedef struct
 {
     block_t plaintext;
-    key_t key;
+    key_t_sergey key;
     block_t ciphertext;
 } input_t;
 
@@ -70,16 +79,17 @@ const uint8_t rcon[11] = {0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 
 
 
 // Pads the given plaintext to the nearest multiple of 16 bytes using the null character.
-void pad(block_t plaintext, uint8_t padding_size)
+block_t pad(block_t plaintext, uint8_t padding_size)
 {
     memset(plaintext.data + BLOCK_SIZE - padding_size, padding_size, padding_size);
+    return plaintext;
 }
 
 // Removes the padding from the given padded plaintext.
-uint8_t unpad(block_t *padded_plaintext)
+uint8_t unpad(uint8_t* padded_plaintext)
 {
-    uint8_t padding_size = padded_plaintext->data[BLOCK_SIZE - 1];
-    memset(padded_plaintext->data + BLOCK_SIZE - padding_size, 0, padding_size);
+    uint8_t padding_size = padded_plaintext[BLOCK_SIZE - 1];
+    memset(padded_plaintext + BLOCK_SIZE - padding_size, 0, padding_size);
     return padding_size;
 }
 
@@ -204,10 +214,11 @@ void inv_mix_columns(uint8_t state[4][4])
     memcpy(state, temp, 16);
 }
 
-void aes_128_decrypt(const uint8_t ciphertext[4 * 4], const uint8_t key[4 * 4], uint8_t plaintext[4 * 4])
+uint8_t* aes_128_decrypt(const uint8_t ciphertext[4 * 4], const uint8_t key[4 * 4])
 {
     uint8_t state[4][4];
     uint8_t round_keys[11][4][4];
+    uint8_t* plaintext = new uint8_t[4 * 4];
     // Initialize state and perform key expansion
     for (int row = 0; row < 4; ++row)
     {
@@ -243,6 +254,7 @@ void aes_128_decrypt(const uint8_t ciphertext[4 * 4], const uint8_t key[4 * 4], 
             plaintext[row + 4 * col] = state[row][col];
         }
     }
+    return plaintext;
 }
 
 void sub_bytes(uint8_t state[4][4])
@@ -269,6 +281,37 @@ void shift_rows(uint8_t state[4][4])
     }
 }
 
+void print_state(uint8_t state[4][4])
+{
+    for (int row = 0; row < 4; ++row)
+    {
+        for (int col = 0; col < 4; ++col)
+        {
+            std::cout << std::hex << std::setfill('0') << std::setw(2) << (int)state[row][col] << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::dec << std::endl;
+}
+
+void print_round_keys(uint8_t round_keys[11][4][4])
+{
+    for (int round = 0; round < 11; ++round)
+    {
+        std::cout << "Round " << round << " key: " << std::endl;
+        for (int row = 0; row < 4; ++row)
+        {
+            for (int col = 0; col < 4; ++col)
+            {
+                std::cout << std::hex << std::setfill('0') << std::setw(2) << (int)round_keys[round][row][col] << " ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::dec << std::endl;
+    }
+}
+
+
 void mix_columns(uint8_t state[4][4])
 {
     uint8_t temp_state[4][4];
@@ -282,10 +325,12 @@ void mix_columns(uint8_t state[4][4])
     memcpy(state, temp_state, 16);
 }
 
-void aes_128_encrypt(const uint8_t plaintext[4 * 4], const uint8_t key[4 * 4], uint8_t ciphertext[4 * 4])
+uint8_t* aes_128_encrypt(const uint8_t plaintext[4 * 4], const uint8_t key[4 * 4])
 {
     uint8_t state[4][4];
-    uint8_t round_keys[11][4][4]; // Initialize state and perform key expansion
+    uint8_t round_keys[11][4][4];
+    uint8_t* ciphertext = new uint8_t[4 * 4];
+    // Initialize state and perform key expansion
     for (int row = 0; row < 4; ++row)
     {
         for (int col = 0; col < 4; ++col)
@@ -293,6 +338,7 @@ void aes_128_encrypt(const uint8_t plaintext[4 * 4], const uint8_t key[4 * 4], u
             state[row][col] = plaintext[row + 4 * col];
         }
     }
+
     key_expansion(key, round_keys);
 
     // Initial round
@@ -320,20 +366,25 @@ void aes_128_encrypt(const uint8_t plaintext[4 * 4], const uint8_t key[4 * 4], u
             ciphertext[row + 4 * col] = state[row][col];
         }
     }
+
+    return ciphertext;
 }
 
-// Encrypts the given plaintext using AES-128 encryption algorithm with the given key.
-void encrypt(block_t plaintext, key_t key, block_t ciphertext)
+uint8_t encrypt(block_t plaintext, key_t_sergey key)
 {
-    aes_128_encrypt(plaintext.data, key.data, ciphertext.data);
+    uint8_t *ciphertext;
+    ciphertext = aes_128_encrypt(plaintext.data, key.data);
+    return *ciphertext;
 }
-
 // Decrypts the given plaintext using AES-128 encryption algorithm with the given key.
-void decrypt(block_t plaintext, key_t key, block_t ciphertext)
+uint8_t decrypt(uint8_t ciphertext, key_t_sergey key)
 {
-    aes_128_decrypt(plaintext.data, key.data, ciphertext.data);
+    uint8_t *decrypted_ciphertext;
+    decrypted_ciphertext = aes_128_decrypt(&ciphertext, key.data);
+    return *decrypted_ciphertext;
 }
 
+#ifdef _WIN32
 void project(hls::stream<input_t> &INPUT, hls::stream<output_t> &OUTPUT)
 {
 	#pragma HLS INTERFACE axis port=INPUT
@@ -365,5 +416,60 @@ void project(hls::stream<input_t> &INPUT, hls::stream<output_t> &OUTPUT)
 		OUTPUT.write(out);
 	}
 }
+#else
 
+// Function to convert a byte array to a hex string
+std::string to_hex_string(const uint8_t* data, size_t size) {
+    std::ostringstream oss;
+    oss << std::hex << std::setfill('0');
+    for (size_t i = 0; i < size; ++i) {
+        oss << std::setw(2) << static_cast<int>(data[i]);
+    }
+    return oss.str();
+}
 
+void generate_random_input(input_t &in) {
+    // Generate random data for the input fields
+    for (int i = 0; i < BLOCK_SIZE; ++i) {
+        in.plaintext.data[i] = rand() % 100;
+        in.key.data[i] = rand() % 100;
+    }
+}
+
+int main() {
+    srand(time(NULL));
+
+    // Generate random INPUT
+    input_t in;
+    generate_random_input(in);
+
+    std::cout << "Random plaintext: " << to_hex_string(in.plaintext.data, BLOCK_SIZE) << std::endl;
+    std::cout << "Random key: " << to_hex_string(in.key.data, BLOCK_SIZE) << std::endl;
+
+    // Pad the plaintext
+    uint8_t padding_size = BLOCK_SIZE - (strlen((const char *)in.plaintext.data) % BLOCK_SIZE);
+    std::cout << "Padding size: " << static_cast<int>(padding_size) << std::endl;
+    in.plaintext = pad(in.plaintext, padding_size);
+    std::cout << "Padded plaintext: " << to_hex_string(in.plaintext.data, BLOCK_SIZE) << std::endl;
+        // Encrypt the plaintext
+        uint8_t ciphertext;
+        ciphertext = encrypt(in.plaintext, in.key);
+        std::cout << "Encrypted ciphertext: " << to_hex_string(&ciphertext, BLOCK_SIZE) << std::endl;
+
+        // Decrypt the ciphertext
+        uint8_t decrypted_plaintext;
+        decrypted_plaintext = decrypt(ciphertext, in.key);
+        std::cout << "Decrypted plaintext: " << to_hex_string(&decrypted_plaintext, BLOCK_SIZE) << std::endl;
+
+        // Remove the padding from the plaintext
+        uint8_t unpadded_size = unpad(&decrypted_plaintext);
+        std::cout << "Unpadded size: " << (int)unpadded_size << std::endl;
+ 
+        // Write OUTPUT
+        output_t out;
+        memcpy(out.decryptedtext.data, &decrypted_plaintext, unpadded_size);
+        std::cout << "Final decrypted text: " << out.decryptedtext.data << std::endl;
+    //}
+    return 0;
+}
+#endif
