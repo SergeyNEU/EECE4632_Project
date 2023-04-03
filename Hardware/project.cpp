@@ -172,14 +172,22 @@ void key_expansion(const uint8_t key[BLOCK_SIZE], uint8_t round_keys[11][4][4])
             uint8_t temp[4];
             if (i == 0)
             {
-                temp[0] = s_box[round_keys[round - 1][1][(i + 3) % 4]] ^ rcon[round];
-                temp[1] = s_box[round_keys[round - 1][2][(i + 3) % 4]];
-                temp[2] = s_box[round_keys[round - 1][3][(i + 3) % 4]];
-                temp[3] = s_box[round_keys[round - 1][0][(i + 3) % 4]];
+                temp[0] = s_box[round_keys[round - 1][1][3]] ^ rcon[round];
+                temp[1] = s_box[round_keys[round - 1][2][3]];
+                temp[2] = s_box[round_keys[round - 1][3][3]];
+                temp[3] = s_box[round_keys[round - 1][0][3]];
             }
-            else
+            else if (i == 1)
             {
-                memcpy(temp, round_keys[round - 1][(i + 3) % 4], 4);
+                memcpy(temp, round_keys[round - 1][0], 4);
+            }
+            else if (i == 2)
+            {
+                memcpy(temp, round_keys[round - 1][1], 4);
+            }
+            else // i == 3
+            {
+                memcpy(temp, round_keys[round - 1][2], 4);
             }
             for (int j = 0; j < 4; ++j)
             {
@@ -188,6 +196,7 @@ void key_expansion(const uint8_t key[BLOCK_SIZE], uint8_t round_keys[11][4][4])
         }
     }
 }
+
 
 void inv_sub_bytes(uint8_t state[4][4])
 {
