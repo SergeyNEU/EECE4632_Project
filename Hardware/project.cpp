@@ -147,6 +147,10 @@ uint8_t hex_multiplication(uint8_t a, uint8_t b)
 
 void add_round_key(uint8_t state[4][4], uint8_t round_key[4][4])
 {
+#ifdef _WIN32
+#pragma HLS ARRAY_PARTITION variable=state complete dim=0
+#pragma HLS ARRAY_PARTITION variable=round_key complete dim=0
+#endif
     for (int row = 0; row < 4; ++row)
     {
         for (int col = 0; col < 4; ++col)
@@ -197,9 +201,10 @@ void key_expansion(const uint8_t key[BLOCK_SIZE], uint8_t round_keys[11][4][4])
 
 void inv_sub_bytes(uint8_t state[4][4])
 {
+#ifdef _WIN32
 #pragma HLS ARRAY_PARTITION variable=state complete dim=0
 #pragma HLS ARRAY_PARTITION variable=inv_s_box complete
-
+#endif
     for (int row = 0; row < 4; ++row)
     {
         for (int col = 0; col < 4; ++col)
