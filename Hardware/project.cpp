@@ -76,6 +76,10 @@ const uint8_t inv_s_box[256] = {
 
 const uint8_t rcon[11] = {0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36};
 
+
+
+#ifdef _WIN32
+#else
 // Helper function to convert a block_t into a hexadecimal string for display
 std::string blockToHexString(const block_t &block)
 {
@@ -87,6 +91,36 @@ std::string blockToHexString(const block_t &block)
     }
     return ss.str();
 }
+
+void print_state(uint8_t state[4][4])
+{
+    for (int row = 0; row < 4; ++row)
+    {
+        for (int col = 0; col < 4; ++col)
+        {
+            std::cout << std::hex << std::setfill('0') << std::setw(2) << (int)state[row][col] << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::dec << std::endl;
+}
+
+void print_round_keys(uint8_t round_keys[11][4][4])
+{
+    for (int round = 0; round < 11; ++round)
+    {
+        for (int row = 0; row < 4; ++row)
+        {
+            for (int col = 0; col < 4; ++col)
+            {
+                std::cout << std::hex << std::setfill('0') << std::setw(2) << (int)round_keys[round][row][col] << " ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::dec << std::endl;
+    }
+}
+#endif
 
 uint8_t hex_multiplication(uint8_t a, uint8_t b)
 {
@@ -276,36 +310,6 @@ void shift_rows(uint8_t state[4][4])
     }
 }
 
-void print_state(uint8_t state[4][4])
-{
-    for (int row = 0; row < 4; ++row)
-    {
-        for (int col = 0; col < 4; ++col)
-        {
-            std::cout << std::hex << std::setfill('0') << std::setw(2) << (int)state[row][col] << " ";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << std::dec << std::endl;
-}
-
-void print_round_keys(uint8_t round_keys[11][4][4])
-{
-    for (int round = 0; round < 11; ++round)
-    {
-        std::cout << "Round " << round << " key: " << std::endl;
-        for (int row = 0; row < 4; ++row)
-        {
-            for (int col = 0; col < 4; ++col)
-            {
-                std::cout << std::hex << std::setfill('0') << std::setw(2) << (int)round_keys[round][row][col] << " ";
-            }
-            std::cout << std::endl;
-        }
-        std::cout << std::dec << std::endl;
-    }
-}
-
 void mix_columns(uint8_t state[4][4])
 {
     uint8_t temp_state[4][4];
@@ -386,7 +390,12 @@ void project(hls::stream<input_t> &INPUT, hls::stream<output_t> &OUTPUT)
 
         // Write OUTPUT
         output_t out;
-        memcpy(out.decryptedtext.data, decrypted_plaintext.data, unpadded_size);
+
+        // Assign array values
+        for(int i = 0; i < 16; i++){
+        	out.decryptedtext.data[i] = decrypted_ciphertext[i];
+        }
+
         OUTPUT.write(out);
     }
 }
