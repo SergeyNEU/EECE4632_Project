@@ -167,30 +167,37 @@ void key_expansion(const uint8_t key[BLOCK_SIZE], uint8_t round_keys[11][4][4])
     }
     for (int round = 1; round <= 10; ++round)
     {
-#ifdef _WIN32
-#pragma HLS PIPELINE II=2
-#endif
         uint8_t temp[4];
         temp[0] = s_box[round_keys[round - 1][1][3]] ^ rcon[round];
         temp[1] = s_box[round_keys[round - 1][2][3]];
         temp[2] = s_box[round_keys[round - 1][3][3]];
         temp[3] = s_box[round_keys[round - 1][0][3]];
 
+#ifdef _WIN32
+#pragma HLS DEPENDENCE variable=round_keys type=inter
+#pragma HLS DEPENDENCE variable=temp type=inter
+#endif
         for (int j = 0; j < 4; ++j)
         {
             round_keys[round][0][j] = round_keys[round - 1][0][j] ^ temp[j];
         }
-
+#ifdef _WIN32
+#pragma HLS DEPENDENCE variable=round_keys inter RAW
+#endif
         for (int j = 0; j < 4; ++j)
         {
             round_keys[round][1][j] = round_keys[round - 1][1][j] ^ round_keys[round][0][j];
         }
-
+#ifdef _WIN32
+#pragma HLS DEPENDENCE variable=round_keys inter RAW
+#endif
         for (int j = 0; j < 4; ++j)
         {
             round_keys[round][2][j] = round_keys[round - 1][2][j] ^ round_keys[round][1][j];
         }
-
+#ifdef _WIN32
+#pragma HLS DEPENDENCE variable=round_keys inter RAW
+#endif
         for (int j = 0; j < 4; ++j)
         {
             round_keys[round][3][j] = round_keys[round - 1][3][j] ^ round_keys[round][2][j];
@@ -304,7 +311,7 @@ void sub_bytes(uint8_t state[4][4])
 
 void shift_rows(uint8_t state[4][4])
 {
-    for (int row = 1; row < 4; ++row)
+    shift_rows_label0:for (int row = 1; row < 4; ++row)
     {
         uint8_t temp_row[4];
         for (int col = 0; col < 4; ++col)
@@ -318,7 +325,7 @@ void shift_rows(uint8_t state[4][4])
 void mix_columns(uint8_t state[4][4])
 {
     uint8_t temp_state[4][4];
-    for (int col = 0; col < 4; ++col)
+    mix_columns_label1:for (int col = 0; col < 4; ++col)
     {
         temp_state[0][col] = hex_multiplication(0x02, state[0][col]) ^ hex_multiplication(0x03, state[1][col]) ^ state[2][col] ^ state[3][col];
         temp_state[1][col] = state[0][col] ^ hex_multiplication(0x02, state[1][col]) ^ hex_multiplication(0x03, state[2][col]) ^ state[3][col];
