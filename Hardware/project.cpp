@@ -167,6 +167,9 @@ void key_expansion(const uint8_t key[BLOCK_SIZE], uint8_t round_keys[11][4][4])
     }
     for (int round = 1; round <= 10; ++round)
     {
+#ifdef _WIN32
+#pragma HLS PIPELINE II=2
+#endif
         uint8_t temp[4];
         temp[0] = s_box[round_keys[round - 1][1][3]] ^ rcon[round];
         temp[1] = s_box[round_keys[round - 1][2][3]];
