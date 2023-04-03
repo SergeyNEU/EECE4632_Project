@@ -207,8 +207,12 @@ void key_expansion(const uint8_t key[BLOCK_SIZE], uint8_t round_keys[11][4][4])
 
 void inv_sub_bytes(uint8_t state[4][4])
 {
+#pragma HLS ARRAY_PARTITION variable=state complete dim=0
+#pragma HLS ARRAY_PARTITION variable=inv_s_box complete
+
     for (int row = 0; row < 4; ++row)
     {
+#pragma HLS PIPELINE
         for (int col = 0; col < 4; ++col)
         {
             state[row][col] = inv_s_box[state[row][col]];
