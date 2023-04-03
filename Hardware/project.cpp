@@ -160,43 +160,40 @@ void key_expansion(const uint8_t key[BLOCK_SIZE], uint8_t round_keys[11][4][4])
 {
     for (int i = 0; i < 4; ++i)
     {
-        for (int j = 0; j < 4; ++j)
-        {
-            round_keys[0][j][i] = key[j * 4 + i];
-        }
+        round_keys[0][0][i] = key[i];
+        round_keys[0][1][i] = key[4 + i];
+        round_keys[0][2][i] = key[8 + i];
+        round_keys[0][3][i] = key[12 + i];
     }
     for (int round = 1; round <= 10; ++round)
     {
-        for (int i = 0; i < 4; ++i)
+        uint8_t temp[4];
+        temp[0] = s_box[round_keys[round - 1][1][3]] ^ rcon[round];
+        temp[1] = s_box[round_keys[round - 1][2][3]];
+        temp[2] = s_box[round_keys[round - 1][3][3]];
+        temp[3] = s_box[round_keys[round - 1][0][3]];
+
+        for (int j = 0; j < 4; ++j)
         {
-            uint8_t temp[4];
-            if (i == 0)
-            {
-                temp[0] = s_box[round_keys[round - 1][1][3]] ^ rcon[round];
-                temp[1] = s_box[round_keys[round - 1][2][3]];
-                temp[2] = s_box[round_keys[round - 1][3][3]];
-                temp[3] = s_box[round_keys[round - 1][0][3]];
-            }
-            else if (i == 1)
-            {
-                memcpy(temp, round_keys[round - 1][0], 4);
-            }
-            else if (i == 2)
-            {
-                memcpy(temp, round_keys[round - 1][1], 4);
-            }
-            else // i == 3
-            {
-                memcpy(temp, round_keys[round - 1][2], 4);
-            }
-            for (int j = 0; j < 4; ++j)
-            {
-                round_keys[round][i][j] = round_keys[round - 1][i][j] ^ temp[j];
-            }
+            round_keys[round][0][j] = round_keys[round - 1][0][j] ^ temp[j];
+        }
+
+        for (int j = 0; j < 4; ++j)
+        {
+            round_keys[round][1][j] = round_keys[round - 1][1][j] ^ round_keys[round][0][j];
+        }
+
+        for (int j = 0; j < 4; ++j)
+        {
+            round_keys[round][2][j] = round_keys[round - 1][2][j] ^ round_keys[round][1][j];
+        }
+
+        for (int j = 0; j < 4; ++j)
+        {
+            round_keys[round][3][j] = round_keys[round - 1][3][j] ^ round_keys[round][2][j];
         }
     }
 }
-
 
 void inv_sub_bytes(uint8_t state[4][4])
 {
