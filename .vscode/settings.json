@@ -50,6 +50,16 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "iomanip": "cpp",
-        "sstream": "cpp"
+        "sstream": "cpp",
+        "__hash_table": "cpp",
+        "__node_handle": "cpp",
+        "__split_buffer": "cpp",
+        "__verbose_abort": "cpp",
+        "array": "cpp",
+        "bit": "cpp",
+        "cmath": "cpp",
+        "optional": "cpp",
+        "unordered_map": "cpp",
+        "vector": "cpp"
     }
 }

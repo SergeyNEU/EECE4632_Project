@@ -1,14 +1,14 @@
 #ifdef _WIN32
-#include "ap_axi_sdata.h"
-#include "hls_stream.h"
-#include "ap_fixed.h"
-#include "ap_int.h"
+    #include "ap_axi_sdata.h"
+    #include "hls_stream.h"
+    #include "ap_fixed.h"
+    #include "ap_int.h"
 #else
-#include <iostream>
-#include <cstdlib>
-#include <ctime>
-#include <iomanip>
-#include <sstream>
+    #include <iostream>
+    #include <cstdlib>
+    #include <ctime>
+    #include <iomanip>
+    #include <sstream>
 #endif
 
 #include <cstdint>
@@ -376,19 +376,13 @@ void project(hls::stream<input_t> &INPUT, hls::stream<output_t> &OUTPUT)
         // Read INPUT
         input_t in = INPUT.read();
 
-        // Pad the plaintext
-        uint8_t padding_size = BLOCK_SIZE - (strlen((const char *)in.plaintext.data) % BLOCK_SIZE);
-        pad(in.plaintext, padding_size);
-
         // Encrypt the plaintext
-        encrypt(in.plaintext, in.key, in.ciphertext);
+        uint8_t *ciphertext = new uint8_t[4 * 4];
+        ciphertext = aes_128_encrypt(in.plaintext.data, in.key.data);
 
         // Decrypt the ciphertext
-        block_t decrypted_plaintext;
-        decrypt(in.ciphertext, in.key, decrypted_plaintext);
-
-        // Remove the padding from the plaintext
-        uint8_t unpadded_size = unpad(&decrypted_plaintext);
+        uint8_t *decrypted_ciphertext = new uint8_t[4 * 4];
+        decrypted_ciphertext = aes_128_decrypt(ciphertext, in.key.data);
 
         // Write OUTPUT
         output_t out;
