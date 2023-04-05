@@ -1,3 +1,8 @@
+#ifndef PROJECT_H_
+#define PROJECT_H_
+#define N	11
+#include "ap_int.h"
+
 #ifdef _WIN32
 #include "ap_axi_sdata.h"
 #include "hls_stream.h"
@@ -498,4 +503,7 @@ int main()
 
     return 0;
 }
+#endif
+
+
 #endif
