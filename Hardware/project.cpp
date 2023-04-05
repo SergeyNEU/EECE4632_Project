@@ -148,11 +148,13 @@ uint8_t hex_multiplication(uint8_t a, uint8_t b)
 void add_round_key(uint8_t state[4][4], uint8_t round_key[4][4])
 {
 #ifdef _WIN32
-#pragma HLS ARRAY_PARTITION variable=state complete dim=0
-#pragma HLS ARRAY_PARTITION variable=round_key complete dim=0
+#pragma HLS ARRAY_PARTITION variable=round_key complete dim=2
 #endif
-    for (int row = 0; row < 4; ++row)
+    add_round_key_label2:for (int row = 0; row < 4; ++row)
     {
+#ifdef _WIN32
+#pragma HLS PIPELINE II=8
+#endif
         for (int col = 0; col < 4; ++col)
         {
             state[row][col] ^= round_key[row][col];
@@ -162,6 +164,9 @@ void add_round_key(uint8_t state[4][4], uint8_t round_key[4][4])
 
 void key_expansion(const uint8_t key[BLOCK_SIZE], uint8_t round_keys[11][4][4])
 {
+#ifdef _WIN32
+#pragma HLS PIPELINE II=25
+#endif
     for (int i = 0; i < 4; ++i)
     {
         round_keys[0][0][i] = key[i];
@@ -170,7 +175,7 @@ void key_expansion(const uint8_t key[BLOCK_SIZE], uint8_t round_keys[11][4][4])
         round_keys[0][3][i] = key[12 + i];
     }
 #ifdef _WIN32
-#pragma HLS DEPENDENCE variable=round_keys inter RAW
+#pragma HLS DEPENDENCE variable=round_keys inter
 #endif
     for (int round = 1; round <= 10; ++round)
     {
@@ -202,8 +207,7 @@ void key_expansion(const uint8_t key[BLOCK_SIZE], uint8_t round_keys[11][4][4])
 void inv_sub_bytes(uint8_t state[4][4])
 {
 #ifdef _WIN32
-#pragma HLS ARRAY_PARTITION variable=state complete dim=0
-#pragma HLS ARRAY_PARTITION variable=inv_s_box complete
+#pragma HLS PIPELINE II=18
 #endif
     for (int row = 0; row < 4; ++row)
     {
@@ -243,7 +247,13 @@ void inv_shift_rows(uint8_t state[4][4])
 
 void inv_mix_columns(uint8_t state[4][4])
 {
+#ifdef _WIN32
+#pragma HLS PIPELINE II=16
+#endif
     uint8_t temp[4][4];
+#ifdef _WIN32
+#pragma HLS ARRAY_PARTITION dim=2 type=complete variable=temp
+#endif
     for (int col = 0; col < 4; ++col)
     {
         temp[0][col] = hex_multiplication(0x0e, state[0][col]) ^ hex_multiplication(0x0b, state[1][col]) ^ hex_multiplication(0x0d, state[2][col]) ^ hex_multiplication(0x09, state[3][col]);
@@ -311,6 +321,9 @@ void shift_rows(uint8_t state[4][4])
 {
     shift_rows_label0:for (int row = 1; row < 4; ++row)
     {
+#ifdef _WIN32
+#pragma HLS PIPELINE II=8
+#endif
         uint8_t temp_row[4];
         for (int col = 0; col < 4; ++col)
         {
@@ -325,6 +338,9 @@ void mix_columns(uint8_t state[4][4])
     uint8_t temp_state[4][4];
     mix_columns_label1:for (int col = 0; col < 4; ++col)
     {
+#ifdef _WIN32
+#pragma HLS PIPELINE II=15
+#endif
         temp_state[0][col] = hex_multiplication(0x02, state[0][col]) ^ hex_multiplication(0x03, state[1][col]) ^ state[2][col] ^ state[3][col];
         temp_state[1][col] = state[0][col] ^ hex_multiplication(0x02, state[1][col]) ^ hex_multiplication(0x03, state[2][col]) ^ state[3][col];
         temp_state[2][col] = state[0][col] ^ state[1][col] ^ hex_multiplication(0x02, state[2][col]) ^ hex_multiplication(0x03, state[3][col]);
@@ -378,6 +394,7 @@ void aes_128_encrypt(const uint8_t plaintext[BLOCK_SIZE], const uint8_t key[BLOC
 #ifdef _WIN32
 void project(hls::stream<input_t> &INPUT, hls::stream<output_t> &OUTPUT)
 {
+#pragma HLS TOP name=project
 #pragma HLS INTERFACE axis port = INPUT
 #pragma HLS INTERFACE axis port = OUTPUT
 #pragma HLS INTERFACE s_axilite port = return
