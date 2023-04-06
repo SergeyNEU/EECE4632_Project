@@ -8,7 +8,8 @@
 #include "hls_stream.h"
 #include "ap_fixed.h"
 #include "ap_int.h"
-typedef ap_uint<256> axi_data;
+typedef ap_axis<256,0,0,0> axis256_t;
+typedef ap_axis<128,0,0,0> axis128_t;
 #else
 #include <iostream>
 #include <cstdlib>
@@ -16,36 +17,10 @@ typedef ap_uint<256> axi_data;
 #include <iomanip>
 #include <sstream>
 #include <queue>
-using block_t_input = std::array<uint8_t, BLOCK_SIZE>;
-using key_t_input = std::array<uint8_t, BLOCK_SIZE>;
-using input_t_input = block_t_input;
-using output_t_input = struct { block_t_input decryptedtext; };
 #endif
 
 #include <cstdint>
 #include <string.h>
-
-
-typedef struct
-{
-    uint8_t data[BLOCK_SIZE];
-} block_t;
-
-typedef struct
-{
-    uint8_t data[BLOCK_SIZE];
-} key_t_sergey;
-
-typedef struct
-{
-    block_t plaintext;
-    key_t_sergey key;
-} input_t;
-
-typedef struct
-{
-    block_t decryptedtext;
-} output_t;
 
 const uint8_t s_box[256] = {
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
@@ -87,8 +62,7 @@ const uint8_t rcon[11] = {0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 
 
 #ifdef _WIN32
 #else
-// Helper function to convert a block_t into a hexadecimal string for display
-std::string blockToHexString(const block_t &block);
+
 void print_state(uint8_t state[4][4]);
 void print_round_keys(uint8_t round_keys[11][4][4]);
 #endif
@@ -103,15 +77,13 @@ void aes_128_decrypt(const uint8_t ciphertext[BLOCK_SIZE], const uint8_t key[4 *
 void sub_bytes(uint8_t state[4][4]);
 void shift_rows(uint8_t state[4][4]);
 void mix_columns(uint8_t state[4][4]);
-void aes_128_encrypt(const uint8_t plaintext[BLOCK_SIZE], const uint8_t key[BLOCK_SIZE], uint8_t *ciphertext);
+void aes_128_encrypt(uint8_t plaintext[BLOCK_SIZE], uint8_t key[BLOCK_SIZE], uint8_t *ciphertext);
 #ifdef _WIN32
 void project(hls::stream<axi_data> &INPUT, hls::stream<output_t> &OUTPUT);
 #else
-
-// Function to convert a byte array to a hex string
-std::string to_hex_string(const uint8_t *data, size_t size);
+std::string to_hex_string(uint8_t *data, size_t size);
+void project(std::queue<uint8_t> &INPUT, std::queue<uint8_t> &OUTPUT);
 int main();
 #endif
-
 
 #endif

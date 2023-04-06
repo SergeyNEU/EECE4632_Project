@@ -2,17 +2,6 @@
 
 #ifdef _WIN32
 #else
-// Helper function to convert a block_t into a hexadecimal string for display
-std::string blockToHexString(const block_t &block)
-{
-    std::stringstream ss;
-    ss << std::hex << std::setfill('0');
-    for (int i = 0; i < BLOCK_SIZE; i++)
-    {
-        ss << std::setw(2) << static_cast<unsigned>(block.data[i]);
-    }
-    return ss.str();
-}
 
 void print_state(uint8_t state[4][4])
 {
@@ -276,10 +265,11 @@ mix_columns_label1:
     memcpy(state, temp_state, 16);
 }
 
-void aes_128_encrypt(const uint8_t plaintext[BLOCK_SIZE], const uint8_t key[BLOCK_SIZE], uint8_t *ciphertext)
+void aes_128_encrypt(uint8_t plaintext[BLOCK_SIZE], uint8_t key[BLOCK_SIZE], uint8_t *ciphertext)
 {
     uint8_t state[4][4];
     uint8_t round_keys[11][4][4];
+
     // Initialize state and perform key expansion
     for (int row = 0; row < 4; ++row)
     {
@@ -319,58 +309,55 @@ void aes_128_encrypt(const uint8_t plaintext[BLOCK_SIZE], const uint8_t key[BLOC
 }
 
 #ifdef _WIN32
-void project(hls::stream<input_t> &INPUT, hls::stream<output_t> &OUTPUT)
+void project(hls::stream<axis256_t> &INPUT, hls::stream<axis128_t> &OUTPUT)
 {
 #pragma HLS TOP name = project
 #pragma HLS INTERFACE axis port = INPUT
 #pragma HLS INTERFACE axis port = OUTPUT
 #pragma HLS INTERFACE s_axilite port = return
 
-    axi_data packet;
-    block_t plaintext;
-    key_t_sergey key;
-    block_t ciphertext;
-    output_t output;
+    uint8_t plaintext[BLOCK_SIZE];
+    uint8_t key[BLOCK_SIZE];
+    uint8_t ciphertext[BLOCK_SIZE];
 
-    // Read AXI Stream packet
-    packet = in_stream.read();
-
-    // Decode packet into plaintext and key
-    for (int i = 0; i < BLOCK_SIZE; i++)
-    {
-        plaintext.data[i] = packet.range(8 * i + 7, 8 * i);
-        key.data[i] = packet.range(128 + 8 * i + 7, 128 + 8 * i);
-    }
+    ap_uint<256> input_data;
+    ap_uint<128> output_data;
 
     while (1)
     {
-        // Read INPUT
-        input_t in = INPUT.read();
+        // Read input data from stream
+        input_data = in_data.data;
+
+        // Assign first 128 bits of input_data to plaintext array
+        for (int i = 0; i < BLOCK_SIZE; i++) {
+            plaintext[i] = input_data.range((i + 1) * 8 - 1, i * 8);
+        }
+
+        // Assign next 128 bits of input_data to key array
+        for (int i = 0; i < BLOCK_SIZE; i++) {
+            key[i] = input_data.range(((i + 1) * 8 - 1)+128, (i * 8)+128);
+        }
 
         // Encrypt the plaintext
         uint8_t ciphertext[BLOCK_SIZE];
-        aes_128_encrypt(plaintext.data, key.data, ciphertext);
+        aes_128_encrypt(plaintext, key, ciphertext);
 
         // Decrypt the ciphertext
         uint8_t decrypted_ciphertext[BLOCK_SIZE];
-        aes_128_decrypt(ciphertext, key.data, decrypted_ciphertext);
+        aes_128_decrypt(ciphertext, key, decrypted_ciphertext);
 
-        // Write OUTPUT
-        output_t out;
-
-        // Assign array values
-        for (int i = 0; i < BLOCK_SIZE; i++)
-        {
-            out.decryptedtext.data[i] = decrypted_ciphertext[i];
+        // Write ciphertext to output stream
+        for (int i = 0; i < BLOCK_SIZE; i++) {
+            output_data.range((i + 1) * 8 - 1, i * 8) = ciphertext[i];
         }
 
-        OUTPUT.write(out);
+        OUTPUT.write({output_data, 0, 1});
     }
 }
 #else
 
 // Function to convert a byte array to a hex string
-std::string to_hex_string(const uint8_t *data, size_t size)
+std::string to_hex_string(uint8_t *data, size_t size)
 {
     std::ostringstream oss;
     oss << std::hex << std::setfill('0');
@@ -381,61 +368,78 @@ std::string to_hex_string(const uint8_t *data, size_t size)
     return oss.str();
 }
 
-void project(std::queue<input_t> &INPUT, std::queue<output_t> &OUTPUT)
+void project(std::queue<uint8_t> &INPUT, std::queue<uint8_t> &OUTPUT)
 {
     while (!INPUT.empty())
     {
-        // Read INPUT
-        input_t in = INPUT.front();
-        INPUT.pop();
+        uint8_t plaintext[BLOCK_SIZE];
+        for (int i = 0; i < BLOCK_SIZE; i++)
+        {
+            plaintext[i] = INPUT.front();
+            INPUT.pop();
+            std::cout << to_hex_string(&plaintext[i], 1);
+        }
+        std::cout << "   | Plaintext" << std::endl;
+
+        uint8_t key[BLOCK_SIZE];
+        for (int i = 0; i < BLOCK_SIZE; i++)
+        {
+            key[i] = INPUT.front();
+            INPUT.pop();
+            std::cout << to_hex_string(&key[i], 1);
+        }
+        std::cout << "   | Key" << std::endl;
 
         // Encrypt the plaintext
         uint8_t ciphertext[BLOCK_SIZE];
-        aes_128_encrypt(in.plaintext.data, in.key.data, ciphertext);
+        aes_128_encrypt(plaintext, key, ciphertext);
+
+        for (int i = 0; i < BLOCK_SIZE; i++)
+        {
+            std::cout << to_hex_string(&ciphertext[i], 1);
+        }
+        std::cout << "   | Ciphertext" << std::endl;
 
         // Decrypt the ciphertext
         uint8_t decrypted_ciphertext[BLOCK_SIZE];
-        aes_128_decrypt(ciphertext, in.key.data, decrypted_ciphertext);
+        aes_128_decrypt(ciphertext, key, decrypted_ciphertext);
 
-        // Write OUTPUT
-        output_t out;
-
-        // Assign array values
+        // Add test_input elements to INPUT queue
         for (int i = 0; i < BLOCK_SIZE; i++)
         {
-            out.decryptedtext.data[i] = decrypted_ciphertext[i];
+            OUTPUT.push(decrypted_ciphertext[i]);
         }
-
-        OUTPUT.push(out);
     }
 }
 
 int main()
 {
-    std::queue<input_t> INPUT;
-    std::queue<output_t> OUTPUT;
+    std::queue<uint8_t> INPUT;
+    std::queue<uint8_t> OUTPUT;
 
     // Populate INPUT with test data
-    input_t test_input = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
-     0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
+    uint8_t test_input[BLOCK_SIZE * 2] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
+                                          0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
 
-    std::cout << "Key: ";
-    std::cout << to_hex_string(test_input.key.data, BLOCK_SIZE) << std::endl;
-    std::cout << "Plaintext: ";
-    std::cout << to_hex_string(test_input.plaintext.data, BLOCK_SIZE) << std::endl;
-    INPUT.push(test_input);
+    // Add test_input elements to INPUT queue
+    for (int i = 0; i < BLOCK_SIZE * 2; i++)
+    {
+        INPUT.push(test_input[i]);
+    }
 
     project(INPUT, OUTPUT);
 
     // Process OUTPUT data
     while (!OUTPUT.empty())
     {
-        output_t out = OUTPUT.front();
-        OUTPUT.pop();
-
-        std::cout << "Decrypted text: ";
-        std::cout << to_hex_string(out.decryptedtext.data, BLOCK_SIZE) << std::endl;
-        std::cout << std::endl;
+        uint8_t decrypted[BLOCK_SIZE];
+        for (int i = 0; i < BLOCK_SIZE; i++)
+        {
+            decrypted[i] = OUTPUT.front();
+            OUTPUT.pop();
+            std::cout << to_hex_string(&decrypted[i], 1);
+        }
+        std::cout << "   | Decrypted Ciphertext" << std::endl;
     }
 
     return 0;
