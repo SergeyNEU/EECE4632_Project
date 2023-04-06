@@ -72,12 +72,13 @@ uint8_t hex_multiplication(uint8_t a, uint8_t b)
 void add_round_key(uint8_t state[4][4], uint8_t round_key[4][4])
 {
 #ifdef _WIN32
-#pragma HLS ARRAY_PARTITION variable=round_key complete dim=2
+#pragma HLS ARRAY_PARTITION variable = round_key complete dim = 2
 #endif
-    add_round_key_label2:for (int row = 0; row < 4; ++row)
+add_round_key_label2:
+    for (int row = 0; row < 4; ++row)
     {
 #ifdef _WIN32
-#pragma HLS PIPELINE II=8
+#pragma HLS PIPELINE II = 8
 #endif
         for (int col = 0; col < 4; ++col)
         {
@@ -89,7 +90,7 @@ void add_round_key(uint8_t state[4][4], uint8_t round_key[4][4])
 void key_expansion(const uint8_t key[BLOCK_SIZE], uint8_t round_keys[11][4][4])
 {
 #ifdef _WIN32
-#pragma HLS PIPELINE II=25
+#pragma HLS PIPELINE II = 25
 #endif
     for (int i = 0; i < 4; ++i)
     {
@@ -99,7 +100,7 @@ void key_expansion(const uint8_t key[BLOCK_SIZE], uint8_t round_keys[11][4][4])
         round_keys[0][3][i] = key[12 + i];
     }
 #ifdef _WIN32
-#pragma HLS DEPENDENCE variable=round_keys inter true
+#pragma HLS DEPENDENCE variable = round_keys inter true
 #endif
     for (int round = 1; round <= 10; ++round)
     {
@@ -131,7 +132,7 @@ void key_expansion(const uint8_t key[BLOCK_SIZE], uint8_t round_keys[11][4][4])
 void inv_sub_bytes(uint8_t state[4][4])
 {
 #ifdef _WIN32
-#pragma HLS PIPELINE II=18
+#pragma HLS PIPELINE II = 18
 #endif
     for (int row = 0; row < 4; ++row)
     {
@@ -172,11 +173,11 @@ void inv_shift_rows(uint8_t state[4][4])
 void inv_mix_columns(uint8_t state[4][4])
 {
 #ifdef _WIN32
-#pragma HLS PIPELINE II=16
+#pragma HLS PIPELINE II = 16
 #endif
     uint8_t temp[4][4];
 #ifdef _WIN32
-#pragma HLS ARRAY_PARTITION dim=2 type=complete variable=temp
+#pragma HLS ARRAY_PARTITION dim = 2 type = complete variable = temp
 #endif
     for (int col = 0; col < 4; ++col)
     {
@@ -243,10 +244,11 @@ void sub_bytes(uint8_t state[4][4])
 
 void shift_rows(uint8_t state[4][4])
 {
-    shift_rows_label0:for (int row = 1; row < 4; ++row)
+shift_rows_label0:
+    for (int row = 1; row < 4; ++row)
     {
 #ifdef _WIN32
-#pragma HLS PIPELINE II=8
+#pragma HLS PIPELINE II = 8
 #endif
         uint8_t temp_row[4];
         for (int col = 0; col < 4; ++col)
@@ -260,10 +262,11 @@ void shift_rows(uint8_t state[4][4])
 void mix_columns(uint8_t state[4][4])
 {
     uint8_t temp_state[4][4];
-    mix_columns_label1:for (int col = 0; col < 4; ++col)
+mix_columns_label1:
+    for (int col = 0; col < 4; ++col)
     {
 #ifdef _WIN32
-#pragma HLS PIPELINE II=15
+#pragma HLS PIPELINE II = 15
 #endif
         temp_state[0][col] = hex_multiplication(0x02, state[0][col]) ^ hex_multiplication(0x03, state[1][col]) ^ state[2][col] ^ state[3][col];
         temp_state[1][col] = state[0][col] ^ hex_multiplication(0x02, state[1][col]) ^ hex_multiplication(0x03, state[2][col]) ^ state[3][col];
@@ -318,10 +321,26 @@ void aes_128_encrypt(const uint8_t plaintext[BLOCK_SIZE], const uint8_t key[BLOC
 #ifdef _WIN32
 void project(hls::stream<input_t> &INPUT, hls::stream<output_t> &OUTPUT)
 {
-#pragma HLS TOP name=project
+#pragma HLS TOP name = project
 #pragma HLS INTERFACE axis port = INPUT
 #pragma HLS INTERFACE axis port = OUTPUT
 #pragma HLS INTERFACE s_axilite port = return
+
+    axi_data packet;
+    block_t plaintext;
+    key_t_sergey key;
+    block_t ciphertext;
+    output_t output;
+
+    // Read AXI Stream packet
+    packet = in_stream.read();
+
+    // Decode packet into plaintext and key
+    for (int i = 0; i < BLOCK_SIZE; i++)
+    {
+        plaintext.data[i] = packet.range(8 * i + 7, 8 * i);
+        key.data[i] = packet.range(128 + 8 * i + 7, 128 + 8 * i);
+    }
 
     while (1)
     {
@@ -330,11 +349,11 @@ void project(hls::stream<input_t> &INPUT, hls::stream<output_t> &OUTPUT)
 
         // Encrypt the plaintext
         uint8_t ciphertext[BLOCK_SIZE];
-        aes_128_encrypt(in.plaintext.data, in.key.data, ciphertext);
+        aes_128_encrypt(plaintext.data, key.data, ciphertext);
 
         // Decrypt the ciphertext
         uint8_t decrypted_ciphertext[BLOCK_SIZE];
-        aes_128_decrypt(ciphertext, in.key.data, decrypted_ciphertext);
+        aes_128_decrypt(ciphertext, key.data, decrypted_ciphertext);
 
         // Write OUTPUT
         output_t out;
@@ -362,63 +381,62 @@ std::string to_hex_string(const uint8_t *data, size_t size)
     return oss.str();
 }
 
+void project(std::queue<input_t> &INPUT, std::queue<output_t> &OUTPUT)
+{
+    while (!INPUT.empty())
+    {
+        // Read INPUT
+        input_t in = INPUT.front();
+        INPUT.pop();
+
+        // Encrypt the plaintext
+        uint8_t ciphertext[BLOCK_SIZE];
+        aes_128_encrypt(in.plaintext.data, in.key.data, ciphertext);
+
+        // Decrypt the ciphertext
+        uint8_t decrypted_ciphertext[BLOCK_SIZE];
+        aes_128_decrypt(ciphertext, in.key.data, decrypted_ciphertext);
+
+        // Write OUTPUT
+        output_t out;
+
+        // Assign array values
+        for (int i = 0; i < BLOCK_SIZE; i++)
+        {
+            out.decryptedtext.data[i] = decrypted_ciphertext[i];
+        }
+
+        OUTPUT.push(out);
+    }
+}
+
 int main()
 {
-    srand(time(NULL));
+    std::queue<input_t> INPUT;
+    std::queue<output_t> OUTPUT;
 
-    // Generate random INPUT
-    input_t in;
+    // Populate INPUT with test data
+    input_t test_input = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
+     0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
 
-    // Generate random data for the KEY
-    for (int i = 0; i < BLOCK_SIZE; ++i)
+    std::cout << "Key: ";
+    std::cout << to_hex_string(test_input.key.data, BLOCK_SIZE) << std::endl;
+    std::cout << "Plaintext: ";
+    std::cout << to_hex_string(test_input.plaintext.data, BLOCK_SIZE) << std::endl;
+    INPUT.push(test_input);
+
+    project(INPUT, OUTPUT);
+
+    // Process OUTPUT data
+    while (!OUTPUT.empty())
     {
-        in.key.data[i] = rand() % 100;
+        output_t out = OUTPUT.front();
+        OUTPUT.pop();
+
+        std::cout << "Decrypted text: ";
+        std::cout << to_hex_string(out.decryptedtext.data, BLOCK_SIZE) << std::endl;
+        std::cout << std::endl;
     }
-
-    // Our text
-    in.plaintext.data[0] = 'T';
-    in.plaintext.data[1] = 'e';
-    in.plaintext.data[2] = 's';
-    in.plaintext.data[3] = 't';
-    in.plaintext.data[4] = 'i';
-    in.plaintext.data[5] = 'n';
-    in.plaintext.data[6] = 'g';
-    in.plaintext.data[7] = 'H';
-    in.plaintext.data[8] = 'e';
-    in.plaintext.data[9] = 'l';
-    in.plaintext.data[10] = 'l';
-    in.plaintext.data[11] = 'o';
-    in.plaintext.data[12] = 'o';
-    in.plaintext.data[13] = 'o';
-    in.plaintext.data[14] = 'o';
-    in.plaintext.data[15] = 'o';
-
-    std::cout << "(str) Plaintext: ";
-    for (int i = 0; i < BLOCK_SIZE; i++)
-    {
-        std::cout << static_cast<char>(in.plaintext.data[i]);
-    }
-    std::cout << std::endl;
-
-    std::cout << "(hex) Plaintext: " << to_hex_string(in.plaintext.data, BLOCK_SIZE) << std::endl;
-    std::cout << "(hex) Random key: " << to_hex_string(in.key.data, BLOCK_SIZE) << std::endl;
-
-    // Encrypt the plaintext
-    uint8_t ciphertext[BLOCK_SIZE];
-    aes_128_encrypt(in.plaintext.data, in.key.data, ciphertext);
-    std::cout << "(hex) Encrypted ciphertext: " << to_hex_string(ciphertext, BLOCK_SIZE) << std::endl;
-
-    // Decrypt the ciphertext
-    uint8_t decrypted_ciphertext[BLOCK_SIZE];
-    aes_128_decrypt(ciphertext, in.key.data, decrypted_ciphertext);
-    std::cout << "(hex) Decrypted plaintext: " << to_hex_string(decrypted_ciphertext, BLOCK_SIZE) << std::endl;
-
-    std::cout << "(str) Decrypted Plaintext: ";
-    for (int i = 0; i < BLOCK_SIZE; i++)
-    {
-        std::cout << static_cast<char>(decrypted_ciphertext[i]);
-    }
-    std::cout << std::endl;
 
     return 0;
 }

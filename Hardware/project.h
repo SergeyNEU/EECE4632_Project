@@ -1,23 +1,30 @@
 #ifndef PROJECT_H_
 #define PROJECT_H_
 
+#define BLOCK_SIZE 16
+
 #ifdef _WIN32
 #include "ap_axi_sdata.h"
 #include "hls_stream.h"
 #include "ap_fixed.h"
 #include "ap_int.h"
+typedef ap_uint<256> axi_data;
 #else
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
+#include <queue>
+using block_t_input = std::array<uint8_t, BLOCK_SIZE>;
+using key_t_input = std::array<uint8_t, BLOCK_SIZE>;
+using input_t_input = block_t_input;
+using output_t_input = struct { block_t_input decryptedtext; };
 #endif
 
 #include <cstdint>
 #include <string.h>
 
-#define BLOCK_SIZE 16
 
 typedef struct
 {
@@ -33,7 +40,6 @@ typedef struct
 {
     block_t plaintext;
     key_t_sergey key;
-    block_t ciphertext;
 } input_t;
 
 typedef struct
@@ -98,9 +104,8 @@ void sub_bytes(uint8_t state[4][4]);
 void shift_rows(uint8_t state[4][4]);
 void mix_columns(uint8_t state[4][4]);
 void aes_128_encrypt(const uint8_t plaintext[BLOCK_SIZE], const uint8_t key[BLOCK_SIZE], uint8_t *ciphertext);
-
 #ifdef _WIN32
-void project(hls::stream<input_t> &INPUT, hls::stream<output_t> &OUTPUT);
+void project(hls::stream<axi_data> &INPUT, hls::stream<output_t> &OUTPUT);
 #else
 
 // Function to convert a byte array to a hex string

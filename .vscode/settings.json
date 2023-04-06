@@ -60,6 +60,8 @@
         "cmath": "cpp",
         "optional": "cpp",
         "unordered_map": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "deque": "cpp",
+        "queue": "cpp"
     }
 }
