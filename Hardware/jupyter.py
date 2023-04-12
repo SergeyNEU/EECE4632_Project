@@ -15,8 +15,9 @@ test_input = [
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
 ]
 
-# Copy test_input into input_buffer
-np.copyto(input_buffer, test_input)
+# Assign test_input values to input_buffer
+for i, value in enumerate(test_input):
+    input_buffer[i] = value
 
 print("INPUT:")
 for i in range(0, 32, 16):
