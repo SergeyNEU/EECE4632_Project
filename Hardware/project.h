@@ -79,7 +79,7 @@ void shift_rows(uint8_t state[4][4]);
 void mix_columns(uint8_t state[4][4]);
 void aes_128_encrypt(uint8_t plaintext[BLOCK_SIZE], uint8_t key[BLOCK_SIZE], uint8_t *ciphertext);
 #ifdef _WIN32
-void project(hls::stream<axi_data> &INPUT, hls::stream<output_t> &OUTPUT);
+void project(hls::stream<axis256_t> &INPUT, hls::stream<axis128_t> &OUTPUT);
 #else
 std::string to_hex_string(uint8_t *data, size_t size);
 void project(std::queue<uint8_t> &INPUT, std::queue<uint8_t> &OUTPUT);

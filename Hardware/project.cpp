@@ -79,7 +79,7 @@ add_round_key_label2:
 void key_expansion(const uint8_t key[BLOCK_SIZE], uint8_t round_keys[11][4][4])
 {
 #ifdef _WIN32
-#pragma HLS PIPELINE II = 25
+#pragma HLS PIPELINE II = 22
 #endif
     for (int i = 0; i < 4; ++i)
     {
@@ -255,7 +255,7 @@ mix_columns_label1:
     for (int col = 0; col < 4; ++col)
     {
 #ifdef _WIN32
-#pragma HLS PIPELINE II = 15
+#pragma HLS PIPELINE II = 13
 #endif
         temp_state[0][col] = hex_multiplication(0x02, state[0][col]) ^ hex_multiplication(0x03, state[1][col]) ^ state[2][col] ^ state[3][col];
         temp_state[1][col] = state[0][col] ^ hex_multiplication(0x02, state[1][col]) ^ hex_multiplication(0x03, state[2][col]) ^ state[3][col];
@@ -319,40 +319,39 @@ void project(hls::stream<axis256_t> &INPUT, hls::stream<axis128_t> &OUTPUT)
     uint8_t plaintext[BLOCK_SIZE];
     uint8_t key[BLOCK_SIZE];
     uint8_t ciphertext[BLOCK_SIZE];
+    uint8_t decrypted_ciphertext[BLOCK_SIZE];
 
-    ap_uint<256> input_data;
-    ap_uint<128> output_data;
+    axis256_t input_data;
+    axis128_t output_data;
 
-    while (1)
-    {
+//    while (1)
+//    {
         // Read input data from stream
-        input_data = in_data.data;
+        input_data = INPUT.read();
 
         // Assign first 128 bits of input_data to plaintext array
         for (int i = 0; i < BLOCK_SIZE; i++) {
-            plaintext[i] = input_data.range((i + 1) * 8 - 1, i * 8);
+            plaintext[i] = input_data.data.range((i + 1) * 8 - 1, i * 8);
         }
 
         // Assign next 128 bits of input_data to key array
         for (int i = 0; i < BLOCK_SIZE; i++) {
-            key[i] = input_data.range(((i + 1) * 8 - 1)+128, (i * 8)+128);
+            key[i] = input_data.data.range(((i + 1) * 8 - 1)+128, (i * 8)+128);
         }
 
         // Encrypt the plaintext
-        uint8_t ciphertext[BLOCK_SIZE];
         aes_128_encrypt(plaintext, key, ciphertext);
 
         // Decrypt the ciphertext
-        uint8_t decrypted_ciphertext[BLOCK_SIZE];
         aes_128_decrypt(ciphertext, key, decrypted_ciphertext);
 
         // Write ciphertext to output stream
         for (int i = 0; i < BLOCK_SIZE; i++) {
-            output_data.range((i + 1) * 8 - 1, i * 8) = ciphertext[i];
+            output_data.data.range((i + 1) * 8 - 1, i * 8) = decrypted_ciphertext[i];
         }
 
-        OUTPUT.write({output_data, 0, 1});
-    }
+        OUTPUT.write(output_data);
+//    }
 }
 #else
 
