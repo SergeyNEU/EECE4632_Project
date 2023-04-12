@@ -5,20 +5,22 @@ from pynq import allocate
 stream_overlay = Overlay('./aes128.bit')
 
 dma = stream_overlay.sergeyAES128.axi_dma_0
-input_buffer = allocate(shape=(2,), dtype=np.uint64)
-output_buffer = allocate(shape=(1,), dtype=np.uint64)
+
+# Allocate input and output buffers for 32 uint8s
+input_buffer = allocate(shape=(32,), dtype=np.uint8)
+output_buffer = allocate(shape=(16,), dtype=np.uint8)
 
 test_input = [
-    0x00112233445566778899AABBCCDDEEFF,
-    0xFFFFFFFFFFFFFFFF8899AABBCCDDEEFF
+    0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
 ]
 
-input_buffer[0] = test_input[0]
-input_buffer[1] = test_input[1]
+# Copy test_input into input_buffer
+np.copyto(input_buffer, test_input)
 
 print("INPUT:")
-for value in input_buffer:
-    print(format(value, "016X"))
+for i in range(0, 32, 16):
+    print(''.join(format(x, '02X') for x in input_buffer[i:i+16]))
 
 def run_kernel():
     dma.sendchannel.transfer(input_buffer)
@@ -29,5 +31,4 @@ def run_kernel():
 run_kernel()
 
 print("OUTPUT:")
-for value in output_buffer:
-    print(format(value, "016X"))
+print(''.join(format(x, '02X') for x in output_buffer))
