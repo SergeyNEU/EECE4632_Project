@@ -17,6 +17,7 @@ typedef ap_axis<128,0,0,0> axis128_t;
 #include <iomanip>
 #include <sstream>
 #include <queue>
+#include <chrono>
 #endif
 
 #include <cstdint>

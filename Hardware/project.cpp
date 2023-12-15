@@ -324,34 +324,37 @@ void project(hls::stream<axis256_t> &INPUT, hls::stream<axis128_t> &OUTPUT)
     axis256_t input_data;
     axis128_t output_data;
 
-//    while (1)
-//    {
-        // Read input data from stream
-        input_data = INPUT.read();
+    //    while (1)
+    //    {
+    // Read input data from stream
+    input_data = INPUT.read();
 
-        // Assign first 128 bits of input_data to plaintext array
-        for (int i = 0; i < BLOCK_SIZE; i++) {
-            plaintext[i] = input_data.data.range((i + 1) * 8 - 1, i * 8);
-        }
+    // Assign first 128 bits of input_data to plaintext array
+    for (int i = 0; i < BLOCK_SIZE; i++)
+    {
+        plaintext[i] = input_data.data.range((i + 1) * 8 - 1, i * 8);
+    }
 
-        // Assign next 128 bits of input_data to key array
-        for (int i = 0; i < BLOCK_SIZE; i++) {
-            key[i] = input_data.data.range(((i + 1) * 8 - 1)+128, (i * 8)+128);
-        }
+    // Assign next 128 bits of input_data to key array
+    for (int i = 0; i < BLOCK_SIZE; i++)
+    {
+        key[i] = input_data.data.range(((i + 1) * 8 - 1) + 128, (i * 8) + 128);
+    }
 
-        // Encrypt the plaintext
-        aes_128_encrypt(plaintext, key, ciphertext);
+    // Encrypt the plaintext
+    aes_128_encrypt(plaintext, key, ciphertext);
 
-        // Decrypt the ciphertext
-        aes_128_decrypt(ciphertext, key, decrypted_ciphertext);
+    // Decrypt the ciphertext
+    aes_128_decrypt(ciphertext, key, decrypted_ciphertext);
 
-        // Write ciphertext to output stream
-        for (int i = 0; i < BLOCK_SIZE; i++) {
-            output_data.data.range((i + 1) * 8 - 1, i * 8) = decrypted_ciphertext[i];
-        }
+    // Write ciphertext to output stream
+    for (int i = 0; i < BLOCK_SIZE; i++)
+    {
+        output_data.data.range((i + 1) * 8 - 1, i * 8) = decrypted_ciphertext[i];
+    }
 
-        OUTPUT.write(output_data);
-//    }
+    OUTPUT.write(output_data);
+    //    }
 }
 #else
 
@@ -413,6 +416,7 @@ void project(std::queue<uint8_t> &INPUT, std::queue<uint8_t> &OUTPUT)
 
 int main()
 {
+
     std::queue<uint8_t> INPUT;
     std::queue<uint8_t> OUTPUT;
 
@@ -425,8 +429,27 @@ int main()
     {
         INPUT.push(test_input[i]);
     }
+    const int numExecutions = 100000;
+    // Start time
+    auto start = std::chrono::high_resolution_clock::now();
 
-    project(INPUT, OUTPUT);
+    for (int i = 0; i < numExecutions; ++i)
+    {
+        project(INPUT, OUTPUT);
+    }
+    // End time
+    auto end = std::chrono::high_resolution_clock::now();
+
+    // Compute total duration in microseconds
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+    // Compute duration per execution in microseconds
+    auto durationPerExecution = duration / numExecutions;
+
+    // Output results to console
+    std::cout << "Function was executed " << numExecutions << " times." << std::endl;
+    std::cout << "Total time taken: " << duration << " microseconds." << std::endl;
+    std::cout << "Average time per execution: " << durationPerExecution << " microseconds." << std::endl;
 
     // Process OUTPUT data
     while (!OUTPUT.empty())

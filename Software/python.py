@@ -11,11 +11,11 @@ def encrypt(key, plaintext):
     # Create an instance of the AES cipher with the given key
     cipher = AES.new(key, AES.MODE_ECB)
 
-    # Pad the plaintext to the nearest multiple of 16 bytes
-    padded_plaintext = pad(plaintext)
+    # # Pad the plaintext to the nearest multiple of 16 bytes
+    # padded_plaintext = pad(plaintext)
 
     # Encrypt the plaintext
-    ciphertext = cipher.encrypt(padded_plaintext)
+    ciphertext = cipher.encrypt(plaintext)
 
     # Return the ciphertext
     return ciphertext
@@ -47,16 +47,21 @@ def unpad(padded_plaintext):
 # Define number of iterations
 num_iterations = 100000
 
-# Lets generate random plaintext and keys
-plaintext_list = [os.urandom(16) for i in range(num_iterations)]
-key_list = [os.urandom(16) for i in range(num_iterations)]
+# Hardcode the plaintext and key from the Vitis testbench
+plaintext = bytearray([0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF])
+key = bytearray([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF])
 
 # Time the implementation to measure the time it takes to encrypt and decrypt the test data
 start_time = time.time()
 
 for i in range(num_iterations):
-    ciphertext = encrypt(key_list[i], plaintext_list[i])
-    decrypted_plaintext = decrypt(key_list[i], ciphertext)
+    ciphertext = encrypt(key, plaintext)
+    decrypted_plaintext = decrypt(key, ciphertext)
+
+
+# Print the ciphertext and decrypted_plaintext as strings of hexadecimal values
+print(ciphertext.encode('hex'))
+print(decrypted_plaintext.encode('hex'))
 
 end_time = time.time()
 total_time = (end_time - start_time) * 1000000 # convert to microseconds
